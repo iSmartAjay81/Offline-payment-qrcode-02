@@ -1,0 +1,39 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Flutter: Pub Get",
+            "type": "shell",
+            "command": "flutter pub get",
+            "problemMatcher": []
+        },
+        {
+            "label": "Flutter: Build Windows Release (.exe)",
+            "type": "shell",
+            "command": "flutter build windows --release",
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "Flutter: Build Android APK Release",
+            "type": "shell",
+            "command": "flutter build apk --release",
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "Flutter: Build Android App Bundle (Play Store)",
+            "type": "shell",
+            "command": "flutter build appbundle --release",
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "Flutter: Run Unit & Widget Tests",
+            "type": "shell",
+            "command": "flutter test",
+            "group": "test",
+            "problemMatcher": []
+        }
+    ]
+}

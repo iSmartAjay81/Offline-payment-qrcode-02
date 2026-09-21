@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Offline Payment QR - 3D Desk Lamp</title>
+  <!-- Load QRCode library offline/embedded -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    :root {
+      --brass-gold: #d4af37;
+      --brass-burnished: #a67c1e;
+      --tungsten-hot: #fff4d4;
+      --tungsten-warm: #ffb347;
+      --scam-red: #e63946;
+      --dark-room: #0d0f12;
+      --dark-surface: #161a20;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    body {
+      background-color: #050608;
+      color: #fff;
+      overflow-x: hidden;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      user-select: none;
+    }
+    /* Canvas Room */
+    #roomCanvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 1;
+      cursor: default;
+    }
+    /* Lamp Switch Click Area */
+    #switchHitbox {
+      position: fixed;
+      z-index: 10;
+      cursor: pointer;
+      border-radius: 50%;
+    }
+    /* Floating hint when lamp is OFF */
+    #lampHint {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 20;
+      background: rgba(0, 0, 0, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 10px 22px;
+      border-radius: 30px;
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.8);
+      pointer-events: none;
+      transition: opacity 0.4s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    /* Glassmorphic Login Card */
+    #loginCard {
+      position: fixed;
+      z-index: 20;
+      background: rgba(24, 28, 36, 0.88);
+      border: 1px solid rgba(255, 179, 71, 0.45);
+      box-shadow: 0 10px 35px rgba(255, 179, 71, 0.18);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-radius: 24px;
+      padding: 28px;
+      width: 90%;
+      max-width: 400px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), transform 0.5s ease;
+      transform: translateY(20px);
+    }
+    #loginCard.visible {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0);
+    }
+    .card-title {
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--tungsten-hot);
+      text-align: center;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    /* PIN LED indicators */
+    .pin-dots {
+      display: flex;
+      justify-content: center;
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+    .pin-dot {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.15);
+      border: 1.5px solid rgba(255, 255, 255, 0.25);
+      transition: all 0.2s ease;
+    }
+    .pin-dot.filled {
+      background: var(--tungsten-hot);
+      border-color: var(--brass-gold);
+      box-shadow: 0 0 12px var(--tungsten-warm);
+    }
+    /* Metallic Keypad */
+    .keypad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .key-btn {
+      background: linear-gradient(135deg, rgba(255,255,255,0.12), rgba(255,255,255,0.03));
+      border: 1px solid rgba(255,255,255,0.15);
+      color: #fff;
+      font-size: 19px;
+      font-weight: 600;
+      padding: 12px 0;
+      border-radius: 12px;
+      cursor: pointer;
+      outline: none;
+      transition: all 0.15s ease;
+    }
+    .key-btn:hover {
+      background: linear-gradient(135deg, rgba(255,255,255,0.2), rgba(255,255,255,0.08));
+      border-color: var(--brass-gold);
+    }
+    .key-btn:active {
+      transform: scale(0.95);
+      box-shadow: 0 0 10px rgba(212, 175, 55, 0.4);
+    }
+    /* Main App Interface (After unlocking) */
+    #appInterface {
+      position: relative;
+      z-index: 30;
+      display: none;
+      width: 100%;
+      min-height: 100vh;
+      background: #0d0f12;
+      padding: 24px;
+    }
+    .app-container {
+      max-width: 1080px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+    }
+    @media (max-width: 860px) {
+      .app-container {
+        grid-template-columns: 1fr;
+      }
+    }
+    .panel {
+      background: #161a20;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      padding: 24px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+    }
+    .header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .btn-toggle {
+      display: flex;
+      background: #1e222b;
+      border-radius: 10px;
+      padding: 4px;
+      margin-bottom: 16px;
+    }
+    .btn-toggle button {
+      flex: 1;
+      padding: 9px;
+      border: none;
+      border-radius: 8px;
+      background: transparent;
+      color: rgba(255, 255, 255, 0.7);
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+    .btn-toggle button.active {
+      background: var(--brass-gold);
+      color: #000;
+    }
+    .form-group {
+      margin-bottom: 14px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.7);
+      margin-bottom: 6px;
+    }
+    .form-group input, .form-group select {
+      width: 100%;
+      background: #0f1218;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 10px;
+      padding: 10px 14px;
+      color: #fff;
+      font-size: 14px;
+      outline: none;
+    }
+    .form-group input:focus {
+      border-color: var(--brass-gold);
+    }
+    .btn-primary {
+      width: 100%;
+      background: linear-gradient(135deg, var(--brass-gold), var(--brass-burnished));
+      color: #000;
+      font-weight: bold;
+      border: none;
+      padding: 14px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 15px;
+      box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
+      margin-top: 10px;
+    }
+    .btn-primary:active {
+      transform: scale(0.98);
+    }
+    /* QR Display Card */
+    .qr-card {
+      background: #fff;
+      color: #000;
+      border-radius: 20px;
+      padding: 24px;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    #qrcode {
+      margin: 16px 0;
+      display: flex;
+      justify-content: center;
+    }
+    .qr-amount {
+      font-size: 26px;
+      font-weight: 800;
+      color: #111;
+      margin: 8px 0;
+    }
+    .qr-payee {
+      font-size: 16px;
+      font-weight: 700;
+    }
+    .qr-vpa {
+      font-size: 13px;
+      color: #666;
+    }
+    .scam-warning {
+      background: rgba(230, 57, 70, 0.12);
+      border: 1px solid rgba(230, 57, 70, 0.3);
+      color: var(--scam-red);
+      font-size: 11px;
+      padding: 10px;
+      border-radius: 8px;
+      margin-top: 14px;
+      line-height: 1.4;
+    }
+    .lock-btn {
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: rgba(255, 255, 255, 0.8);
+      padding: 6px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .lock-btn:hover {
+      border-color: var(--scam-red);
+      color: var(--scam-red);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Room Canvas simulating 3D Desk Lamp & Volumetric Beam -->
+  <canvas id="roomCanvas"></canvas>
+  <div id="switchHitbox" title="Click or Press Space to toggle lamp"></div>
+
+  <!-- Prompt when lamp is OFF -->
+  <div id="lampHint">
+    <span>💡</span>
+    <span>Click the lamp switch or press <b>Space</b> to turn on</span>
+  </div>
+
+  <!-- Glassmorphic Login Card (Illuminated by the lamp) -->
+  <div id="loginCard">
+    <div class="card-title">
+      <span>🔒</span>
+      <span id="cardHeading">Enter Security PIN</span>
+    </div>
+    <div class="pin-dots">
+      <div class="pin-dot" id="dot0"></div>
+      <div class="pin-dot" id="dot1"></div>
+      <div class="pin-dot" id="dot2"></div>
+      <div class="pin-dot" id="dot3"></div>
+    </div>
+    <div class="keypad">
+      <button class="key-btn" onclick="pressDigit('1')">1</button>
+      <button class="key-btn" onclick="pressDigit('2')">2</button>
+      <button class="key-btn" onclick="pressDigit('3')">3</button>
+      <button class="key-btn" onclick="pressDigit('4')">4</button>
+      <button class="key-btn" onclick="pressDigit('5')">5</button>
+      <button class="key-btn" onclick="pressDigit('6')">6</button>
+      <button class="key-btn" onclick="pressDigit('7')">7</button>
+      <button class="key-btn" onclick="pressDigit('8')">8</button>
+      <button class="key-btn" onclick="pressDigit('9')">9</button>
+      <button class="key-btn" style="visibility:hidden"></button>
+      <button class="key-btn" onclick="pressDigit('0')">0</button>
+      <button class="key-btn" onclick="pressBackspace()">⌫</button>
+    </div>
+    <div style="text-align: center;">
+      <span style="font-size: 12px; color: rgba(255,255,255,0.5); cursor: pointer;" onclick="toggleLamp()">Turn Lamp Off</span>
+    </div>
+  </div>
+
+  <!-- Main Unlocked QR Application -->
+  <div id="appInterface">
+    <div class="app-container">
+      <!-- Left Configuration Form -->
+      <div class="panel">
+        <div class="header-bar">
+          <h2 style="font-size: 18px; color: var(--brass-gold);">Offline Payment QR Generator</h2>
+          <button class="lock-btn" onclick="lockApp()">🔒 Lock App (Space)</button>
+        </div>
+
+        <div class="btn-toggle">
+          <button id="btnUpi" class="active" onclick="switchMode('UPI')">UPI ID Mode</button>
+          <button id="btnBank" onclick="switchMode('BANK')">Bank Transfer (NPCI)</button>
+        </div>
+
+        <div class="form-group">
+          <label>Payee / Merchant Name</label>
+          <input type="text" id="payeeName" value="Rahul Sharma" placeholder="e.g. Rahul Sharma" oninput="generateQR()" />
+        </div>
+
+        <div id="upiGroup" class="form-group">
+          <label>UPI ID (VPA)</label>
+          <input type="text" id="upiId" value="rahul@okhdfcbank" placeholder="e.g. name@oksbi" oninput="generateQR()" />
+        </div>
+
+        <div id="bankGroup" style="display:none;">
+          <div class="form-group">
+            <label>Bank Account Number</label>
+            <input type="text" id="accountNumber" placeholder="9 to 18 digits" oninput="generateQR()" />
+          </div>
+          <div class="form-group">
+            <label>Bank IFSC Code</label>
+            <input type="text" id="ifscCode" placeholder="e.g. HDFC0001234" oninput="generateQR()" />
+          </div>
+          <div style="background: rgba(255,183,3,0.1); border: 1px solid rgba(255,183,3,0.3); color: #ffb703; font-size: 11px; padding: 8px; border-radius: 8px; margin-bottom: 12px;">
+            Note: Bank transfers are encoded into the standardized NPCI UPI format: <code>account@IFSC.ifsc.npci</code>.
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Amount in INR (₹)</label>
+          <input type="number" id="amount" value="500.00" step="0.01" placeholder="Enter amount" oninput="generateQR()" />
+        </div>
+
+        <div class="form-group">
+          <label>Transaction Note / Remarks</label>
+          <input type="text" id="note" value="Dinner Split" placeholder="Optional remark" oninput="generateQR()" />
+        </div>
+
+        <button class="btn-primary" onclick="generateQR()">Update QR Code</button>
+
+        <div class="scam-warning">
+          ⚠️ <b>FRAUD WARNING</b>: You never need to enter your PIN or scan a QR code to receive money. Always check the payee name before sending.
+        </div>
+      </div>
+
+      <!-- Right Live Preview Card -->
+      <div class="panel" style="display: flex; flex-direction: column; align-items: center; justify-content: center;">
+        <div class="qr-card" id="printableCard">
+          <div class="qr-payee" id="cardPayee">Rahul Sharma</div>
+          <div class="qr-vpa" id="cardVpa">rahul@okhdfcbank</div>
+          <div id="qrcode"></div>
+          <div class="qr-amount" id="cardAmount">₹ 500.00</div>
+          <div style="font-size: 11px; color: #777; margin-top: 4px;" id="cardNote">"Dinner Split"</div>
+          <div style="font-size: 9px; color: #999; margin-top: 14px; border-top: 1px dashed #ddd; padding-top: 8px; width: 100%;">
+            Scan with GPay • PhonePe • Paytm • BHIM • Cred
+          </div>
+        </div>
+
+        <div style="margin-top: 18px; display: flex; gap: 10px;">
+          <button class="lock-btn" onclick="window.print()">🖨️ Print Receipt</button>
+          <button class="lock-btn" onclick="copyUpiLink()">🔗 Copy Link</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 3D Desk Lamp Lighting Physics & Simulation
+    const canvas = document.getElementById('roomCanvas');
+    const ctx = canvas.getContext('2d');
+    const hitbox = document.getElementById('switchHitbox');
+    const loginCard = document.getElementById('loginCard');
+    const lampHint = document.getElementById('lampHint');
+    const appInterface = document.getElementById('appInterface');
+
+    let isLampOn = false;
+    let lampIntensity = 0.0;
+    let flicker = 0.0;
+    let flickerInterval = null;
+    let masterPin = localStorage.getItem('offline_master_pin') || '';
+    let enteredPin = '';
+    let qrInstance = null;
+    let currentMode = 'UPI';
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+
+      // Position switch hitbox
+      const isMobile = window.innerWidth < 600;
+      const baseX = isMobile ? canvas.width * 0.5 : canvas.width * 0.32;
+      const baseY = canvas.height * 0.42;
+
+      hitbox.style.left = (baseX + 12) + 'px';
+      hitbox.style.top = (baseY - 10) + 'px';
+      hitbox.style.width = '40px';
+      hitbox.style.height = '40px';
+
+      // Position login card in the illuminated beam
+      if (isMobile) {
+        loginCard.style.left = '5%';
+        loginCard.style.right = '5%';
+        loginCard.style.bottom = '40px';
+      } else {
+        loginCard.style.left = (canvas.width * 0.5) + 'px';
+        loginCard.style.bottom = '12%';
+      }
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    function renderRoom() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const intensity = Math.max(0, Math.min(1, lampIntensity * (1.0 - flicker * 0.4)));
+
+      // 1. Room Background Gradient
+      const bgGrad = ctx.createRadialGradient(
+        canvas.width * 0.5, canvas.height * 0.25, 10,
+        canvas.width * 0.5, canvas.height * 0.25, canvas.height * 0.9
+      );
+      bgGrad.addColorStop(0, `rgb(${20 + intensity * 18}, ${23 + intensity * 10}, ${30 + intensity * 5})`);
+      bgGrad.addColorStop(1, '#050608');
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // 2. Desk Horizon Line
+      const deskY = canvas.height * 0.38;
+      const deskGrad = ctx.createLinearGradient(0, deskY, 0, canvas.height);
+      deskGrad.addColorStop(0, `rgb(${27 + intensity * 30}, ${23 + intensity * 20}, ${19 + intensity * 10})`);
+      deskGrad.addColorStop(1, '#0c0a08');
+      ctx.fillStyle = deskGrad;
+      ctx.fillRect(0, deskY, canvas.width, canvas.height - deskY);
+
+      // Desk Specular Edge
+      ctx.strokeStyle = `rgba(255, 179, 71, ${0.05 + intensity * 0.25})`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(0, deskY);
+      ctx.lineTo(canvas.width, deskY);
+      ctx.stroke();
+
+      const isMobile = canvas.width < 600;
+      const lampX = isMobile ? canvas.width * 0.5 : canvas.width * 0.32;
+      const lampY = canvas.height * 0.42;
+
+      // 3. Volumetric Light Cone (Projected from lamp to desk)
+      if (intensity > 0.01) {
+        const bulbX = lampX + 35;
+        const bulbY = lampY - 80;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(bulbX - 16, bulbY + 10);
+        ctx.lineTo(canvas.width * 0.5 + 260, canvas.height);
+        ctx.lineTo(canvas.width * 0.5 - 260, canvas.height);
+        ctx.closePath();
+
+        const coneGrad = ctx.createRadialGradient(bulbX, bulbY, 10, bulbX, bulbY, canvas.height * 0.8);
+        coneGrad.addColorStop(0, `rgba(255, 244, 212, ${0.35 * intensity})`);
+        coneGrad.addColorStop(0.4, `rgba(255, 179, 71, ${0.18 * intensity})`);
+        coneGrad.addColorStop(1, 'rgba(255, 179, 71, 0)');
+        ctx.fillStyle = coneGrad;
+        ctx.fill();
+
+        // Warm Desk Surface Oval Reflection Pool
+        ctx.beginPath();
+        ctx.ellipse(canvas.width * 0.5, canvas.height * 0.68, 220, 120, 0, 0, Math.PI * 2);
+        const poolGrad = ctx.createRadialGradient(canvas.width * 0.5, canvas.height * 0.68, 20, canvas.width * 0.5, canvas.height * 0.68, 220);
+        poolGrad.addColorStop(0, `rgba(255, 244, 212, ${0.28 * intensity})`);
+        poolGrad.addColorStop(0.5, `rgba(255, 179, 71, ${0.12 * intensity})`);
+        poolGrad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = poolGrad;
+        ctx.fill();
+        ctx.restore();
+      }
+
+      // 4. Render 3D Articulated Desk Lamp
+      _drawDeskLampModel(ctx, lampX, lampY, intensity);
+
+      requestAnimationFrame(renderRoom);
+    }
+    requestAnimationFrame(renderRoom);
+
+    function _drawDeskLampModel(ctx, x, y, intensity) {
+      // Cast Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.55)';
+      ctx.beginPath();
+      ctx.ellipse(x, y + 10, 50, 14, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Heavy Brass Base
+      const baseGrad = ctx.createLinearGradient(x - 45, y, x + 45, y);
+      baseGrad.addColorStop(0, '#332612');
+      baseGrad.addColorStop(0.35, '#d4af37');
+      baseGrad.addColorStop(0.75, '#a67c1e');
+      baseGrad.addColorStop(1, '#1e170a');
+      ctx.fillStyle = baseGrad;
+      ctx.beginPath();
+      ctx.ellipse(x, y, 45, 12, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Articulated Brass Arm Joints
+      const joint1 = { x: x, y: y - 6 };
+      const elbow = { x: x - 25, y: y - 60 };
+      const headJoint = { x: x + 35, y: y - 85 };
+
+      ctx.strokeStyle = '#d4af37';
+      ctx.lineWidth = 4;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(joint1.x - 3, joint1.y);
+      ctx.lineTo(elbow.x - 3, elbow.y);
+      ctx.moveTo(joint1.x + 3, joint1.y);
+      ctx.lineTo(elbow.x + 3, elbow.y);
+      ctx.moveTo(elbow.x, elbow.y);
+      ctx.lineTo(headJoint.x, headJoint.y);
+      ctx.stroke();
+
+      // Joint Screws
+      ctx.fillStyle = '#a67c1e';
+      [joint1, elbow, headJoint].forEach(p => {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // Lamp Shade (Racing Green / Brass Trim)
+      ctx.save();
+      ctx.fillStyle = '#1b3828';
+      ctx.beginPath();
+      ctx.moveTo(headJoint.x - 22, headJoint.y - 12);
+      ctx.lineTo(headJoint.x + 26, headJoint.y - 8);
+      ctx.lineTo(headJoint.x + 34, headJoint.y + 18);
+      ctx.lineTo(headJoint.x - 28, headJoint.y + 14);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.strokeStyle = '#d4af37';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Glowing Bulb Element
+      ctx.fillStyle = intensity > 0.05 ? `rgba(255, 244, 212, ${0.3 + intensity * 0.7})` : '#333';
+      ctx.beginPath();
+      ctx.arc(headJoint.x + 4, headJoint.y + 14, 9, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      // Tactile Switch Knob
+      ctx.fillStyle = intensity > 0.5 ? '#fff4d4' : '#222';
+      ctx.beginPath();
+      ctx.arc(x + 22, y, 6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Toggle Lamp Functionality
+    function toggleLamp() {
+      isLampOn = !isLampOn;
+      if (isLampOn) {
+        lampHint.style.opacity = '0';
+        // Simulate incandescent ignition micro-flicker
+        let step = 0;
+        flickerInterval = setInterval(() => {
+          step++;
+          if (step < 7) {
+            flicker = Math.random() * 0.75;
+          } else {
+            flicker = 0.0;
+            clearInterval(flickerInterval);
+          }
+        }, 40);
+
+        let anim = 0;
+        const ramp = setInterval(() => {
+          anim += 0.1;
+          lampIntensity = Math.min(1.0, anim);
+          if (anim >= 1.0) clearInterval(ramp);
+        }, 30);
+
+        loginCard.classList.add('visible');
+        if (!masterPin) {
+          document.getElementById('cardHeading').innerText = 'Create 4-Digit Master PIN';
+        } else {
+          document.getElementById('cardHeading').innerText = 'Enter Security PIN';
+        }
+      } else {
+        clearInterval(flickerInterval);
+        flicker = 0.0;
+        lampIntensity = 0.0;
+        loginCard.classList.remove('visible');
+        lampHint.style.opacity = '1';
+        enteredPin = '';
+        updatePinDots();
+      }
+    }
+
+    hitbox.addEventListener('click', toggleLamp);
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space' && e.target.tagName !== 'INPUT') {
+        e.preventDefault();
+        toggleLamp();
+      }
+    });
+
+    // Keypad Logic
+    function pressDigit(d) {
+      if (enteredPin.length < 4) {
+        enteredPin += d;
+        updatePinDots();
+        if (enteredPin.length === 4) {
+          setTimeout(verifyPin, 150);
+        }
+      }
+    }
+    function pressBackspace() {
+      if (enteredPin.length > 0) {
+        enteredPin = enteredPin.slice(0, -1);
+        updatePinDots();
+      }
+    }
+    function updatePinDots() {
+      for (let i = 0; i < 4; i++) {
+        const dot = document.getElementById('dot' + i);
+        if (i < enteredPin.length) {
+          dot.classList.add('filled');
+        } else {
+          dot.classList.remove('filled');
+        }
+      }
+    }
+
+    function verifyPin() {
+      if (!masterPin) {
+        // Setup master PIN
+        masterPin = enteredPin;
+        localStorage.setItem('offline_master_pin', masterPin);
+        alert('Master PIN created successfully!');
+        unlockApp();
+      } else {
+        if (enteredPin === masterPin) {
+          unlockApp();
+        } else {
+          alert('Incorrect PIN. Please try again.');
+          enteredPin = '';
+          updatePinDots();
+        }
+      }
+    }
+
+    function unlockApp() {
+      document.getElementById('appInterface').style.display = 'block';
+      document.body.style.overflow = 'auto';
+      generateQR();
+    }
+
+    function lockApp() {
+      document.getElementById('appInterface').style.display = 'none';
+      document.body.style.overflow = 'hidden';
+      toggleLamp();
+    }
+
+    // QR Generation Logic
+    function switchMode(mode) {
+      currentMode = mode;
+      document.getElementById('btnUpi').classList.toggle('active', mode === 'UPI');
+      document.getElementById('btnBank').classList.toggle('active', mode === 'BANK');
+      document.getElementById('upiGroup').style.display = mode === 'UPI' ? 'block' : 'none';
+      document.getElementById('bankGroup').style.display = mode === 'BANK' ? 'block' : 'none';
+      generateQR();
+    }
+
+    function generateQR() {
+      const payee = document.getElementById('payeeName').value.trim() || 'Payee';
+      const amount = parseFloat(document.getElementById('amount').value.trim()) || 0;
+      const note = document.getElementById('note').value.trim();
+
+      let vpa = '';
+      if (currentMode === 'UPI') {
+        vpa = document.getElementById('upiId').value.trim() || 'merchant@upi';
+      } else {
+        const acc = document.getElementById('accountNumber').value.trim() || '1234567890';
+        const ifsc = (document.getElementById('ifscCode').value.trim() || 'HDFC0001234').toUpperCase();
+        vpa = `${acc}@${ifsc}.ifsc.npci`;
+      }
+
+      // Build UPI Scheme URL: upi://pay?pa=...&pn=...&am=...&cu=INR&tn=...
+      let upiUrl = `upi://pay?pa=${encodeURIComponent(vpa)}&pn=${encodeURIComponent(payee)}`;
+      if (amount > 0) {
+        upiUrl += `&am=${amount.toFixed(2)}`;
+      }
+      upiUrl += `&cu=INR`;
+      if (note) {
+        upiUrl += `&tn=${encodeURIComponent(note)}`;
+      }
+
+      // Update Card
+      document.getElementById('cardPayee').innerText = payee;
+      document.getElementById('cardVpa').innerText = vpa;
+      document.getElementById('cardAmount').innerText = amount > 0 ? `₹ ${amount.toFixed(2)}` : 'Customer Enters Amount';
+      document.getElementById('cardNote').innerText = note ? `"${note}"` : '';
+
+      // Render QRCode
+      const qrContainer = document.getElementById('qrcode');
+      qrContainer.innerHTML = '';
+      qrInstance = new QRCode(qrContainer, {
+        text: upiUrl,
+        width: 200,
+        height: 200,
+        colorDark: "#0f172a",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.H
+      });
+    }
+
+    function copyUpiLink() {
+      const vpa = currentMode === 'UPI'
+        ? document.getElementById('upiId').value.trim()
+        : `${document.getElementById('accountNumber').value.trim()}@${document.getElementById('ifscCode').value.trim()}.ifsc.npci`;
+      const payee = document.getElementById('payeeName').value.trim();
+      const amount = parseFloat(document.getElementById('amount').value.trim()) || 0;
+      const url = `upi://pay?pa=${encodeURIComponent(vpa)}&pn=${encodeURIComponent(payee)}&am=${amount.toFixed(2)}&cu=INR`;
+      navigator.clipboard.writeText(url).then(() => {
+        alert('UPI Link copied to clipboard!');
+      });
+    }
+  </script>
+</body>
+</html>

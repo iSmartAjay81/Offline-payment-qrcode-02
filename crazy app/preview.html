@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cyber Fintech Preview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="lamp-is-on">
+  <div class="bg-ambient-orb orb-1"></div>
+  <div class="bg-ambient-orb orb-2"></div>
+  <main class="app-container">
+    <nav class="navbar">
+      <div class="container nav-inner">
+        <a class="brand-logo" href="#">
+          <span class="logo-icon">$</span>
+          <span class="brand-text">NexaPay</span>
+          <span class="badge-3d">3D</span>
+        </a>
+        <div class="nav-links">
+          <a class="nav-link active" href="#dashboard">Dashboard</a>
+          <a class="nav-link" href="#activity">Activity</a>
+          <a class="nav-link" href="#settings">Settings</a>
+        </div>
+        <div class="nav-actions">
+          <button class="icon-btn" id="theme-toggle" aria-label="Toggle theme">&#9788;</button>
+          <div class="user-badge-nav"><span class="avatar-img">AJ</span> Ajay</div>
+        </div>
+      </div>
+    </nav>
+
+    <section class="main-content" id="dashboard">
+      <div class="container">
+        <div class="demo-banner">
+          <div class="demo-banner-content"><span class="demo-tag">DEMO</span><span>Interactive payment intelligence preview</span></div>
+          <button class="btn btn-sm btn-secondary" id="lamp-toggle">Turn lamp off</button>
+        </div>
+
+        <header class="dash-header">
+          <div class="dash-welcome">
+            <h1>Good evening, Ajay <span aria-hidden="true">*</span></h1>
+            <p>Here is your financial signal for today.</p>
+          </div>
+          <div class="dash-header-actions"><div class="live-clock-pill">LIVE <span id="clock"></span></div></div>
+        </header>
+
+        <div class="stats-grid-6">
+          <article class="stat-card-3d card-total-txns"><div class="stat-card-top"><div class="stat-icon-wrapper">#</div><span class="stat-badge-trend">+12%</span></div><div class="stat-card-title">Transactions</div><div class="stat-card-value">1,248</div><div class="stat-card-footer">Compared with last month</div></article>
+          <article class="stat-card-3d card-total-amt"><div class="stat-card-top"><div class="stat-icon-wrapper">$</div><span class="stat-badge-trend">+8%</span></div><div class="stat-card-title">Total volume</div><div class="stat-card-value">$42,680</div><div class="stat-card-footer">Across all payment channels</div></article>
+          <article class="stat-card-3d card-today"><div class="stat-card-top"><div class="stat-icon-wrapper">+</div><span class="stat-badge-trend">+4%</span></div><div class="stat-card-title">Today</div><div class="stat-card-value">$1,840</div><div class="stat-card-footer">18 completed payments</div></article>
+        </div>
+
+        <div class="dash-split-section" id="activity">
+          <section class="card-glass"><div class="dash-panel-header"><h3>Recent activity</h3><span class="badge badge-confirmed"><span class="status-dot"></span> Healthy</span></div><div class="recent-txns-list">
+            <div class="recent-txn-item"><div class="txn-left"><div class="txn-cat-badge">M</div><div class="txn-info"><h4>Metro Market</h4><p>Today, 18:42</p></div></div><div class="txn-right"><div class="txn-amount">-$84.20</div><span class="badge badge-confirmed">Confirmed</span></div></div>
+            <div class="recent-txn-item"><div class="txn-left"><div class="txn-cat-badge">S</div><div class="txn-info"><h4>Streamline Cloud</h4><p>Today, 15:08</p></div></div><div class="txn-right"><div class="txn-amount">-$29.00</div><span class="badge badge-generated">Generated</span></div></div>
+            <div class="recent-txn-item"><div class="txn-left"><div class="txn-cat-badge">C</div><div class="txn-info"><h4>Cloud Nine Cafe</h4><p>Yesterday, 09:17</p></div></div><div class="txn-right"><div class="txn-amount">-$12.50</div><span class="badge badge-confirmed">Confirmed</span></div></div>
+          </div></section>
+          <section class="card-glass"><div class="dash-panel-header"><h3>Categories</h3></div><div class="category-mini-bars"><div class="cat-bar-item"><div class="cat-bar-label"><span>Essentials</span><span>68%</span></div><div class="cat-progress-track"><div class="cat-progress-fill" style="width:68%;background:var(--neon-cyan)"></div></div></div><div class="cat-bar-item"><div class="cat-bar-label"><span>Workspace</span><span>44%</span></div><div class="cat-progress-track"><div class="cat-progress-fill" style="width:44%;background:var(--neon-purple)"></div></div></div><div class="cat-bar-item"><div class="cat-bar-label"><span>Leisure</span><span>26%</span></div><div class="cat-progress-track"><div class="cat-progress-fill" style="width:26%;background:var(--neon-amber)"></div></div></div></div></section>
+        </div>
+      </div>
+    </section>
+
+    <footer class="app-footer"><div class="container footer-bottom"><span>NexaPay preview</span><span>Secure by design</span></div></footer>
+  </main>
+  <script>
+    const clock = document.getElementById('clock');
+    const lampToggle = document.getElementById('lamp-toggle');
+    const themeToggle = document.getElementById('theme-toggle');
+    function updateClock() { clock.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
+    updateClock();
+    setInterval(updateClock, 1000);
+    lampToggle.addEventListener('click', () => {
+      const isOn = document.body.classList.toggle('lamp-is-on');
+      document.body.classList.toggle('lamp-is-off', !isOn);
+      lampToggle.textContent = isOn ? 'Turn lamp off' : 'Turn lamp on';
+    });
+    themeToggle.addEventListener('click', () => {
+      document.documentElement.toggleAttribute('data-theme');
+    });
+  </script>
+</body>
+</html>
